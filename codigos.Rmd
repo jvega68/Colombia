@@ -1,0 +1,715 @@
+---
+title: "Códigos"
+author: "Jorge de la Vega"
+date: "2023-10-09"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = NULL,
+                      warning = F, message = F)
+```
+
+
+## Ejemplos de cópulas
+
+```{r}
+library(copula)
+# cópula independiente
+persp(indepCopula(), pCopula, theta = -30, phi = 20)
+
+# Comonotonicidad
+n.grid <- 26
+u <- seq(0,1,length.out=n.grid)
+grid <- expand.grid("u[1]"= u,"u[2]"= u)
+M <- function(u) apply(u,1,min) #Cota superior M
+x.M <- cbind(grid,"M(u[1],u[2])" = M(grid)) #Evalua M en el grid
+wireframe2(x.M)
+
+# Contramonotonicidad
+n.grid <- 26
+u <- seq(0,1,length.out=n.grid)
+grid <- expand.grid("u[1]"= u,"u[2]"= u)
+W <- function(u) pmax(0,rowSums(u)-1) #cota inferior W
+x.W <- cbind(grid,"W(u[1],u[2])" = W(grid)) #Evalua W en el grid
+wireframe2(x.W)
+```
+
+## Cotas para cópulas
+
+```{r}
+norm.cop <- normalCopula(0.4)
+par(mar = c(4, 4, .1, .1), mfrow = c(1,2))
+persp(norm.cop, pCopula, cex.axis = 0.5)
+persp(norm.cop, dCopula, cex.axis = 0.5)
+```
+
+
+## Familias arquimedianas
+
+### Cópulas de Frank
+
+Cópula de Frank
+
+```{r }
+copfr <- function(x,th){-log((exp(-th*x)-1)/(exp(-th)-1))}
+par(pty="s")
+curve(copfr(x,th = 5),      
+      from = 0.1, to = 1,
+      ylab = expression(phi[Fr](x)), col = 1)
+curve(copfr(x,th = 1),
+      from = 0.1, to = 1, add = T, col = 2)
+curve(copfr(x,th = 0.01),
+      from = 0.1, to = 1, add = T, col = 3)
+curve(copfr(x, th = -1),
+      from = 0.1, to = 1, add = T, col = 4)
+curve(copfr(x, th = -5), 
+      from = 0.1, to = 1, add = T, col = 5)
+legend("bottomleft", 
+       lty = rep(1, 5),   
+       paste("th=", c(5, 1, 0.01,-1,-5)), col = 1:5)
+```
+
+Simulación de la cópula de Frank
+
+```{r}
+library(copula)
+set.seed(1)
+par(mfrow = c(3,3))
+theta <- c(-90, -50, -10, -1, 0 , 5, 20, 50, 90)
+for(i in 1:9){
+  U <- rCopula(n = 200,
+	copula = archmCopula(family = "frank", param = theta[i]))
+	plot(U,
+	     xlab = expression(u[1]), 
+	     ylab = expression(u[2]),
+		   main = eval(substitute(expression(paste(theta, " = ", j)), list(j = as.character(theta[i])))))
+}
+
+```
+
+### Cópula de Clayton
+
+Función generadora
+
+```{r}
+Phi_C <- function(u, theta = 0.0001)(u^(-theta)-1)/theta
+unitario <- seq(0, 1, by = 0.1)
+	
+curve(Phi_C, from = 0.1, to = 1, col = "red")
+for(theta in seq(0, 10, length = 100)){
+			curve(Phi_C(x, theta = theta), 
+			      from = 0.001, to = 1, add = T, 
+			      col = ifelse(theta > 1, "blue", "orange"),
+			      ylab = expression(Phi[C](x)))
+}
+```
+
+Simulación de cópula de Clayton
+
+```{r}
+library(copula)
+set.seed(1)
+par(mfrow = c(3,3))
+theta <- c(-.95, -0.5, -0.1, 0.1, 1 , 5, 20, 50, 90)
+for(i in 1:9){
+	U <- rCopula(n = 200,
+	            copula = archmCopula(family = "clayton", 
+	                                 param = theta[i]))
+	plot(U, 
+	     xlab = expression(u[1]), 
+	     ylab = expression(u[2]),
+	     main = eval(substitute(expression(paste(theta, " = ", j)), list(j = as.character(theta[i])))))
+}
+```
+
+
+### Cópula de Gumbel
+
+Función generadora
+
+```{r}
+Phi_G <- function(u,theta=1)(-log(u))^theta
+			
+curve(Phi_G, from = 0.1, to = 1, col = "red")
+for(theta in seq(1, 20, length = 100)){
+		curve(Phi_G(x, theta = theta), 
+		      from = 0.001, 
+		      to = 1, 
+		      add = T, 
+		      col = ifelse(theta > 10,"blue","orange"))
+}
+```
+
+Simulación de la cópula de Gumbel
+
+```{r}
+library(copula)
+set.seed(1)
+par(mfrow = c(2,3))
+theta <- c(1, 1.5, 2, 4, 8, 50)
+for(i in 1:6){
+	U <- rCopula(n = 200,
+				       copula = archmCopula(family = "gumbel",
+				                            param = theta[i]))
+	plot(U, 
+	     xlab = expression(u[1]), 
+	     ylab = expression(u[2]),
+	     main = eval(substitute(expression(paste(theta, " = ", j)), list(j = as.character(theta[i])))))
+}
+```
+
+
+## Ejemplos
+
+Primer ejemplo independencia
+
+```{r}
+set.seed(1)
+n <- 1000
+sigma <- 0.5 # asumida
+#Matriz de covarianzas
+Sigma <- sigma^2 * diag(2)
+Sigma
+#Genera las muestras de dos normales
+z <- matrix(rnorm(2*n),nrow=2)
+#Transforma para escalar las variables
+Y <- sigma*diag(2) %*% z 
+X <- exp(Y) #X tiene distribución lognormal
+dim(X)
+X[1:2,1:3]
+par(pty = "s") #gráfico cuadrado
+plot(X[1,], X[2,], xlim=c(0,5), ylim=c(0,5), pch=16, cex = 0.5, 
+     main = "Lognormales con Independencia")
+```
+
+Segundo ejemplo 
+
+```{r}
+rho = 0.7 #correlación
+Sigma <- sigma^2*matrix(c(1,rho,rho,1),nrow=2)
+Sigma
+		
+# Obten la matriz raíz cuadrada B de la matriz 
+# definida positiva Sigma
+e <- eigen(Sigma)
+v <- e$vectors
+B <- v %*% diag(sqrt(e$values)) %*% t(v)
+z <- matrix(rnorm(2*n),nrow=2)
+Y <-  B %*% z #Transforma para escalar las variables
+X <- exp(Y)
+par(pty = "s") #haz el gráfico cuadrado
+		plot(X[1,], X[2,], xlim=c(0,5), ylim=c(0,5), pch=16, cex=0.5,
+		main="Lognormales con Correlación=0.7")
+```
+
+Generación de variables aleatorias usando cópula $t$
+
+```{r}
+library(mvtnorm) #para generar t multivariada
+set.seed(3); TT <- t(rmvt(n = 1000, sigma = Sigma, df = 1)) #genera una dist. t(1)
+U  <- pt(TT, df = 1) #distribución t(1) para uniformes
+X <- rbind(qgamma(U[1,],2,1), qt(U[2,],2))
+par(mfcol = c(1,3)); plot(X[1,], X[2,], pch = 16, cex = 0.5, main = "Copula")
+hist(X[1,], main = "Gamma(3,1)", breaks = 30, prob = T)
+hist(X[2,], main = "t(2)", breaks = 100, prob = T)
+cor(X[1,], X[2,])
+
+```
+
+Simulación de cópulas bivariadas
+
+```{r}
+theta <- 5
+c1 <- cbind(runif(1000),runif(1000)) # genera u y v
+A <- 1+theta*(1-2*c1[,1])
+B <- sqrt(A^2-4*(A-1)*c1[,2])
+FGM <- cbind(c1[,1],2*c1[,2]/(A+B))
+par(pty="s"); plot(FGM[,1],FGM[,2],pch=16,cex=0.3,main=paste("Muestra de FMG",theta)) 
+```
+
+
+## Paquete copula
+
+Clase cópula
+
+```{r}
+library(copula)
+copula.normal4 <- ellipCopula(family = "normal", 
+                              dim = 4, dispstr = "un",
+                              param = c(0.4,0.5,0.2,0,0.3,0.8))
+copula.normal4 #objeto de clase normalCopula
+u <- rCopula(200, copula.normal4) #genera observaciones de la cópula construida
+cor(u)
+pairs(u, pch = 16, cex = 0.5)
+```
+
+Ejemplo 2
+
+```{r}
+micopula.t3 <- ellipCopula(family = "t", 
+                           dim = 3, 
+                           dispstr = "toep",
+                           param = c(0.8,0.5), df = 8)
+micopula.t3 #objeto de clase tCopula
+rCopula(5, micopula.t3) #genera cinco observaciones de la cópula construida
+```
+
+Ejemplo 3
+
+```{r}
+clayton2 <- archmCopula(family = "clayton", 
+                        dim = 2, param = 2)
+clayton2 #el programa llama alpha al parámetro
+# Generemos una muestra de ésta cópula:
+y <- rCopula(1000,clayton2)
+```
+
+Curvas de nivel
+
+```{r}
+par(mfrow = c(1,2))
+contour(clayton2,dCopula) #gráfica de curvas de nivel
+plot(y, cex = 0.3)
+```
+
+
+Ejemplo 4
+
+```{r}
+copula.Frank5 <- archmCopula(family = "frank", dim = 3, param = 5)
+micopula <- mvdc(copula = copula.Frank5, 
+                 margins = c("norm","pois","gamma"),
+                 paramMargins = list(list(mean=10,sd=2),
+                                     list(lambda=3),
+                                     list(shape=2,scale=4)))
+u <- rMvdc(300,micopula) #muestra aleatoria
+par(mar = c(1,1,1,1))
+pairs(u,pch=16,cex=0.5)
+```
+
+Funciones de distribución y densidad para cópulas
+
+```{r}
+(u <- rMvdc(5, micopula)) # Puntos del dominio
+dMvdc(u, micopula) # puntos de la densidad
+pMvdc(u,micopula) # puntos de la distribución
+(u <- rCopula(5,copula.Frank5)) # puntos del dominio
+dCopula(u,copula.Frank5) # puntos de la densidad
+pCopula(u,copula.Frank5) # puntos de la distribución
+```
+
+Realización de la distribución conjunta
+
+```{r}
+library(scatterplot3d)
+par(mfrow = c(1,2),
+    mar = c(1,2,1,1),
+    oma = c(0,0,1,1),
+    mgp = c(2,1,0))
+u <- rMvdc(200, micopula)
+scatterplot3d(u, cex.symbols = 0.5, pch = 16)
+v <- rCopula(200, copula.Frank5)
+scatterplot3d(v, cex.symbols = 0.5, pch = 16)
+```
+
+Contornos de funciones de densidad
+
+```{r}
+miMvd1 <- mvdc(copula = archmCopula(family = "clayton",
+                                    param = 2), 
+               margins = c("norm", "gamma"),
+               paramMargins = list(list(mean = 0, sd = 1),
+                                   list(shape = 1, scale = 2)))
+miMvd2 <- mvdc(copula = archmCopula(family = "frank",
+                                    param = 5.763), 
+               margins = c("norm", "gamma"),
+               paramMargins = list(list(mean = 0, sd = 1),
+                                   list(shape = 1, scale = 2)))
+miMvd3 <- mvdc(copula = archmCopula(family = "gumbel",
+                                    param = 2), 
+               margins = c("norm", "gamma"),
+               paramMargins = list(list(mean = 0, sd = 1),
+                                   list(shape = 1, scale = 2)))
+
+# Parámetros para tau de Kendall de las tres dist. = 5
+par(mfrow = c(1,3), 
+    mar = c(2,2,1,1), 
+    oma = c(1,1,0,0), 
+    mgp = c(2,1,0))
+contour(miMvd1, dMvdc, xlim = c(-3,3), ylim = c(0,4))
+contour(miMvd2, dMvdc, xlim = c(-3,3), ylim = c(0,4))
+contour(miMvd3, dMvdc, xlim = c(-3,3), ylim = c(0,4))
+
+contour(miMvd1, dMvdc,xlim=c(-3,3), ylim=c(0,4))
+contour(miMvd2, dMvdc,xlim=c(-3,3), ylim=c(0,4))
+contour(miMvd3, dMvdc,xlim=c(-3,3), ylim=c(0,4))
+
+# función persp es similar
+persp(miMvd1, dMvdc, xlim = c(-3,3), ylim = c(0,4))
+persp(miMvd2, dMvdc, xlim = c(-3,3), ylim = c(0,4))
+persp(miMvd3, dMvdc, xlim = c(-3,3), ylim = c(0,4))
+```
+
+## Correlaciones
+
+```{r}
+# 1
+muestra <- cbind(c(2,3,1,5,4,9,6,4,2,10),
+                 c(3,4,5,2,8,6,8,3,1,10))
+cor(muestra, method = "kendall")
+# La correlación de Pearson usual
+cor(muestra)
+
+# 2
+X <- c(1,2,3,4,5,6,7)
+Y <- c(1,3,6,2,7,4,5)
+
+# 3
+muestra <- cbind(c(2,3,1,5,4,9,6,4,2,10),
+                 c(3,4,5,2,8,6,8,3,1,10))
+cor(muestra, method = "spearman")
+#Para efectos comparativos
+cor(muestra, method = "kendall")
+# La correlación de Pearson usual
+cor(muestra)
+```
+
+Ejemplo 3
+
+```{r}
+X <- rexp(100, rate = 3)
+Y <- X^3
+plot(X,Y)
+cor(X,Y)
+cor(X,Y, method = "spearman")
+cor(X,Y, method = "kendall")
+```
+
+
+## Aplicaciones
+
+```{r}
+
+library(copula)
+# Define el objeto cópula a generar, en este caso es una normal con correlaciones
+# dadas
+# El argumento dispstr se refiere a la estructura a la matriz de covarianza que caracteriza a
+# la cópula. "un" es para indicar que no tiene estructura.
+# ver detalle en https://www.jstatsoft.org/index.php/jss/article/view/v021i04/v21i04.pdf
+copula_normal_3 <- normalCopula(c(sin(0.7*pi/2), sin(0.4*pi/2), sin(0.3*pi/2)), dim = 3, dispstr = "un")
+set.seed(100) #fija una semilla
+U <- rCopula(1000, copula_normal_3) #Genera la muestra aleatoria
+pairs(U, pch = 16, cex = 0.5)
+round(cor(U, method = "kendall"), 2)
+W <- cbind(qnorm(U[,1], mean = 4, sd = 5),
+qt(U[,2], 4),
+qbinom(p = U[,3], size = 25, prob = 0.4))
+head(W)
+#Grafica los histogramas y agrega densidades con las distribuciones deseadas para ver
+#la aproximación
+par(mfrow = c(1,3))
+hist(W[,1], prob = T, breaks = 50); 
+points(sort(W[,1]), dnorm(sort(W[,1]), 4, 5), 
+       type = "l", col = "red")
+hist(W[,2], prob = T, breaks = 50)
+points(sort(W[,2]), dt(sort(W[,2]),4), 
+       type = "l", col = "red")
+hist(W[,3], prob = T);
+points(sort(W[,3]),dbinom(sort(W[,3]), size = 25, prob = 0.4), 
+       type = "l", col = "red", lwd = 3)
+cor(W, method = "kendall")
+```
+
+## Estimación de una cópula
+
+```{r}
+library(Ecdat) # fuente de datos
+library(copula)
+library(fGarch)
+library(MASS) # usa las funciones fitdistr y kde2d
+library(fCopulae) # funciones adicionales de copula (pempiricalCopula y ellipticalCopulaFit)
+data(CRSPday, package = "Ecdat")
+head(as.data.frame(CRSPday)) # muestra la estructura de los datos
+ibm <- CRSPday[,5]; crsp <- CRSPday[,7]
+(n <- length(ibm)) #número de observaciones
+par(pty = "s")
+plot(ibm, crsp, cex = 0.4, pch = 16)
+abline(h = 0, v = 0, col="red")
+```
+
+
+```{r}
+ibm <- CRSPday[,5]
+crsp <- CRSPday[,7]
+est.ibm <- as.numeric(fitdistr(ibm,"t")$estimate) #parámetros t: media, escala, gl
+est.crsp <- as.numeric(fitdistr(crsp,"t")$estimate)
+#Convierte los parámetros de escala a desviaciones estándar en el caso de la t
+est.ibm[2] <- est.ibm[2]*sqrt(est.ibm[3]/(est.ibm[3]-2))
+est.crsp[2] <- est.crsp[2]*sqrt(est.crsp[3]/(est.crsp[3]-2))
+#Grados de libertad para cada caso
+est.ibm[3]
+est.crsp[3]
+(tau <- cor(ibm,crsp,method = "kendall"))
+(omega <- 2/pi*asin(tau))
+copula2 <- tCopula(omega,dim=2,dispstr = "un",df = 2)
+d1 <- cbind(fGarch::pstd(ibm, mean = est.ibm[1], sd = est.ibm[2], nu = est.ibm[3]),
+            fGarch::pstd(crsp, mean = est.crsp[1], sd = est.crsp[2], nu = est.crsp[3]))
+(fit1 <- fitCopula(copula2, method = "ml", optim.method = "L-BFGS-B", data = d1, start = c(omega,5), lower = c(0,2.5), upper = c(0.5,15)))
+```
+
+```{r}
+#Ajusta copula normal
+fnorm <- fitCopula(data = d1, copula = normalCopula(-0.3, dim = 2),
+method = "ml", optim.method = "BFGS", start = 0.5)
+#Ajusta Gumbel
+fgumbel <- fitCopula(data=d1,copula=gumbelCopula(3,dim=2),
+method="ml",optim.method="BFGS",start=2)
+#Ajusta Frank
+ffrank <- fitCopula(data=d1,copula=frankCopula(3,dim=2),
+method="ml",optim.method="BFGS",start=2)
+#Ajusta Clayton
+fclayton <- fitCopula(data=d1,copula=claytonCopula(3,dim=2),
+method="ml",optim.method="BFGS",start=2)
+```
+
+Comparación gráfica
+
+```{r}
+u <- d1
+dem <- pempiricalCopula(u[,1],u[,2])
+par(mfrow = c(3,2), mar = c(2,2,2,2))
+contour(dem$x, dem$y, dem$z, main = "Cópula Empírica")
+contour(tCopula(fit1@estimate[1], 
+                df = round(fit1@estimate[2],0)),
+        pCopula, main = "Cópula t")
+contour(normalCopula(fnorm@estimate), pCopula, 
+        main = "Cópula Normal")
+contour(gumbelCopula(fgumbel@estimate), pCopula, 
+        main = "Cópula Gumbel")
+contour(frankCopula(ffrank@estimate), pCopula,
+        main = "Cópula Frank")
+contour(claytonCopula(fclayton@estimate), pCopula, 
+        main = "Cópula Clayton")
+
+par(mfrow=c(3,2), mar=c(2,2,2,2))
+contour(kde2d(u[,1],u[,2]), main = "KDE")
+contour(tCopula(fit1@estimate[1], df = fit1@estimate[2]), dCopula, 
+        main = "Cópula t", 
+        nlevels = 25)
+contour(normalCopula(fnorm@estimate), dCopula, 
+        main = "Cópula Normal", nlevels = 25)
+contour(gumbelCopula(fgumbel@estimate), dCopula, 
+        main = "Cópula Gumbel", nlevels = 25)
+contour(frankCopula(ffrank@estimate), dCopula, 
+        main = "Cópula Frank", nlevels = 25)
+contour(claytonCopula(fclayton@estimate), dCopula, 
+        main = "Cópula Clayton", nlevels = 25)
+
+# AIC
+# AIC Normal
+2*length(fnorm@estimate) - 2*fnorm@loglik
+# AIC Gumbel
+2*length(fgumbel@estimate) - 2*fgumbel@loglik
+# AIC frank
+2*length(ffrank@estimate) - 2*ffrank@loglik
+# AIC Clayton
+2*length(fclayton@estimate) - 2*fclayton@loglik
+# AIC t
+2*length(fit1@estimate) - 2*fit1@loglik
+```
+
+
+## Dependencia de colas
+
+Ejemplo 1
+
+```{r}
+knitr::opts_chunk$set(echo = TRUE, fig.align = "center", comment = NA)
+library(evd)
+library(CombMSC)
+library(readxl)
+library(copula)
+library(MASS)
+
+datos <- read_xlsx("data/Series_Bursas_IFNB.xlsx", skip = 2) # datos originales
+resCR <- read_xlsx("data/Series Bursas IFNB output.xlsx",
+sheet = "Hoja2",range = "S4:BL507", col_names = T)
+rescr <- resCR[,seq(2,46,by=3)]
+resAC <- read_xlsx("data/Series Bursas IFNB output.xlsx",
+sheet = "Hoja1",range = "V3:Bo506", col_names = T)
+resac <- resAC[,seq(2,46,by=3)]
+names(datos)[2] <- "Alpha_Credit"
+names(datos)[3] <- "Credito_Real"
+
+# Estimaciones empíricas
+Lemp <- function(z) sum((U<=z) & (V<=z))/sum(U<=z)
+Remp <- function(z) sum((U>=1-z) & (V>=1-z))/sum(U>=1-z)
+L2emp <- function(z) 2*log(mean(U <= z))/log(mean((U <= z) & (V <= z))) - 1
+R2emp <- function(z) 2*log(mean(U >= 1-z))/log(mean((U >= 1-z) & (V >= 1-z))) - 1
+```
+
+```{r}
+par(mfrow = c(2,2))
+		n <- 5000
+		x <- rnorm(n);y <- rnorm(n)
+		
+		# Aplicando el ejercicio:
+		U <- rank(x)/(n+1)
+		V <- rank(y)/(n+1)
+		u <- seq(0.001,0.5,by = 0.001)
+		L <- Vectorize(Lemp)(u)
+		R <- Vectorize(Remp)(rev(u))
+		
+		
+		plot(c(u, u + 0.5 - u[1]), c(L, R), type = "l", ylim = c(0,1), 
+		xlab = "Cola Inferior L           Cola Superior R",
+		ylab = expression(lambda))
+		abline(v = 0.5, col = "grey")
+		
+		
+		plot(U,V, main = "Rangos normalizados\n (empates = media)", pch = 16, cex = 0.5)
+		plot(x, y, main = "Datos originales", pch = 16, cex = 0.5)
+		plot(1:length(L), L, ylim = c(-1.2, 1.2), main = "Índices", ylab = "", xlab = "", type = "l", col = "green")
+		legend("bottomright", legend = c("Superioir", "Inferior"), lty = c(1,1), col = c("red", "green"))
+		lines(R, col = "red", lwd = 2)
+```
+
+
+```{r}
+		par(mfrow = c(2,2))
+		n <- 5000
+		X <- mvrnorm(n, mu = c(0,0), Sigma = matrix(c(1,0.8,0.8,1), nrow = 2))
+		x <- X[,1]
+		y <- X[,2]
+		# Aplicando el ejercicio:
+		U <- rank(x)/(n + 1)
+		V <- rank(y)/(n + 1)
+		u <- seq(0.001, 0.5, by = 0.001)
+		L <- Vectorize(Lemp)(u)
+		R <- Vectorize(Remp)(rev(u))
+		
+		plot(c(u, u + 0.5 - u[1]), c(L, R), type = "l", ylim = c(0,1), 
+		xlab = "Cola Inferior L           Cola Superior R",
+		ylab = expression(lambda))
+		abline(v = 0.5, col = "grey")
+		
+		plot(U, V, main = "Rangos normalizados\n (empates = media)", pch = 16, cex = 0.5)
+		plot(x, y, main = "Datos originales", pch = 16, cex = 0.5)
+		
+		plot(1:length(L), L, ylim = c(-1.2,1.2), main = "Índices", ylab = "", xlab = "", type = "l", col = "green")
+		legend("bottomright", legend = c("Superioir", "Inferior"), lty = c(1,1), col = c("red", "green"))
+		lines(R, col = "red", lwd = 2)
+```
+
+
+```{r}
+		par(mfrow = c(2,2))
+		n <- 5000
+		x <- rnorm(n); y <- rnorm(n)
+		
+		
+		# Aplicando el ejercicio:
+		U <- rank(x)/(n+1); V <- rank(y)/(n+1)
+		u <- seq(0.001,0.5,by = 0.001)
+		L <- Vectorize(L2emp)(u)
+		R <- Vectorize(R2emp)(rev(u))
+		
+		
+		plot(c(u, u + 0.5 - u[1]), c(L, R), type = "l", ylim = c(-1,1), 
+		xlab = "Cola Inferior L           Cola Superior R",
+		ylab = expression(xi))
+		abline(v = 0.5, col = "grey")
+		
+		
+		plot(U, V, main = "Rangos normalizados\n (empates = media)", pch = 16, cex = 0.5)
+		plot(x, y, main = "Datos originales", pch = 16, cex = 0.5)
+		plot(1:length(L), L, ylim = c(-1.2, 1.2), main = "Índices", ylab = "", xlab = "", type = "l", col = "green")
+		legend("bottomright", legend = c("Superioir", "Inferior"), lty = c(1,1), col = c("red", "green"))
+		lines(R, col = "red", lwd = 2)
+```
+
+
+```{r}
+par(mfrow = c(2,2))
+n <- 5000
+X <- mvrnorm(n, mu = c(0,0), Sigma = matrix(c(1,0.9,0.9,1), nrow = 2))
+x <- X[,1];	y <- X[,2]
+		
+		
+# Aplicando el ejercicio:
+U <- rank(x)/(n + 1); V <- rank(y)/(n + 1)
+u <- seq(0.001, 0.5, by = 0.001)
+L <- Vectorize(L2emp)(u)
+R <- Vectorize(R2emp)(rev(u))
+		
+plot(c(u, u + 0.5 - u[1]), c(L, R), type = "l", ylim = c(0,1), 
+		xlab = "Cola Inferior L           Cola Superior R",
+		ylab = expression(xi))
+		abline(v = 0.5,col = "grey")
+		
+plot(U, V, main = "Rangos normalizados\n (empates = media)", pch = 16, cex = 0.5)
+plot(x, y, main = "Datos originales", pch = 16, cex = 0.5)
+plot(1:length(L), L, ylim = c(-1.2,1.2), main = "Índices", ylab = "", xlab = "", type = "l", col = "green")
+legend("bottomright", legend = c("Superioir", "Inferior"), lty = c(1,1), col = c("red", "green"))
+lines(R, col = "red", lwd = 2)
+```
+
+```{r}
+datos3 <- read_xlsx("data/ByA.xlsx", sheet = "Spread", range = "V8:Z638",
+col_names = c("Alpha_Credit", "Crédito_Real", "Unifin", "Fin.Indep", "Mexarend"))
+
+pares <- subsets(5, 2, 1:5)
+Rl <- R2 <- list(NULL)
+Ll <- L2 <- list(NULL)
+
+par(mfrow = c(2,2))
+
+for(i in 1:nrow(pares)){
+		U <- rank(datos3[ , pares[i,1]])/(nrow(datos3)+1)
+		V <- rank(datos3[ , pares[i,2]])/(nrow(datos3)+1)
+		u <- seq(0.001, 0.5, by = 0.001)
+		L <- Vectorize(Lemp)(u)
+		R <- Vectorize(Remp)(rev(u))
+		Li2 <- Vectorize(L2emp)(u)
+		Ri2 <- Vectorize(R2emp)(rev(u))
+
+		Ll[[i]] <- L
+		Rl[[i]] <- R
+		L2[[i]] <- Li2
+		R2[[i]] <- Ri2
+
+		print(paste(names(datos3)[pares[i,]], pares[i,]))
+
+		# Gráfica LR  
+		plot(c(u, u + 0.5 - u[1]), c(L, R), type = "l", ylim = 0:1, 
+			 xlab = "Cola Inferior L          Cola Superior R",
+			 ylab = expression(lambda),
+			 main = paste(names(datos3)[pares[i,1]]," y ",names(datos3)[pares[i,2]]))
+		abline(v = 0.5, col = "grey")
+		legend("topleft", legend = c("Fuerte","Débil"), col = c("black","navy"),lty = c(1, 0), pch = c(NA, 16), cex=0.5)
+
+points(c(u, u + 0.5 - u[1]), c(Li2, Ri2), pch = 16, ylim = 0:1, col = "navy")
+abline(v = 0.5, col = "grey")
+
+# Datos originales
+plot(datos3[, pares[i,1:2]], main = "Datos originales")
+# Datos en rangos
+plot(apply(datos3[, pares[i, 1:2]], 2,
+           function(x)rank(x)/length(x)), 
+     main = "Rangos normalizados")
+nombre <- names(datos3)[pares[i,2]]
+
+# Serie de los índices a lo largo del tiempo
+plot(1:length(R), R, ylim = c(0,1), main = "Índices", 
+     type = "l", col = "red", ylab = "", xlab = "")
+legend("bottomright", legend = c("Sup", "Inf"), 
+       lty = c(1, 1), col = c("red", "green"), cex=0.5)
+points(Ri2, col = "orange")
+points(Li2, col = "yellow")
+lines(L, col = "green", lwd = 2)
+}
+
+names(Ll) <- names(Rl) <- names(L2) <- names(R2) <- paste(names(datos3)[pares[,1]],names(datos3)[pares[,2]])
+```
+
